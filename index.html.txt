@@ -1,0 +1,525 @@
+はい、ではその方向で使える スマホ向け・質問形式のHTMLモック を作ります。
+1ファイルで動くようにして、現場 → 機器 → 部品 → 写真 → 確認 の流れにします。
+この試作版でできることは次の通りです。
+スマホ向け画面
+1問ずつ入力
+進捗表示
+写真選択
+最後に確認画面
+登録完了メッセージ
+入力内容を一覧表示
+CSVエクスポート
+そのまま index.html として保存して使えます。
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>部品管理システム（質問形式）</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      background: #f3f6fb;
+      color: #333;
+    }
+
+    .app {
+      max-width: 430px;
+      margin: 0 auto;
+      min-height: 100vh;
+      background: #fff;
+      box-shadow: 0 0 10px rgba(0,0,0,0.08);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      background: #1f4e79;
+      color: white;
+      padding: 18px 16px;
+      font-size: 20px;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .content {
+      padding: 20px 16px 100px;
+      flex: 1;
+    }
+
+    .progress {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 10px;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #ddd;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: #1f4e79;
+      width: 0%;
+      transition: 0.3s;
+    }
+
+    .question {
+      font-size: 22px;
+      font-weight: bold;
+      margin-bottom: 18px;
+      line-height: 1.5;
+    }
+
+    .subtext {
+      font-size: 13px;
+      color: #777;
+      margin-bottom: 12px;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      padding: 14px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      box-sizing: border-box;
+      margin-bottom: 16px;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    .photo-preview {
+      width: 100%;
+      max-height: 220px;
+      object-fit: cover;
+      border-radius: 12px;
+      margin-top: 10px;
+      border: 1px solid #ddd;
+      display: none;
+    }
+
+    .footer {
+      position: sticky;
+      bottom: 0;
+      background: white;
+      border-top: 1px solid #ddd;
+      padding: 12px 16px;
+      display: flex;
+      gap: 10px;
+    }
+
+    button {
+      flex: 1;
+      padding: 14px;
+      font-size: 16px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    .btn-back {
+      background: #d9e2ec;
+      color: #333;
+    }
+
+    .btn-next {
+      background: #1f4e79;
+      color: white;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .summary-card, .record-card {
+      background: #f8fbff;
+      border: 1px solid #d7e4f2;
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+
+    .summary-card p, .record-card p {
+      margin: 8px 0;
+      font-size: 14px;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin: 20px 0 12px;
+      color: #1f4e79;
+    }
+
+    .top-actions {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .top-actions button {
+      font-size: 14px;
+      padding: 12px;
+    }
+
+    .btn-secondary {
+      background: #5c7c99;
+      color: white;
+    }
+
+    .success {
+      text-align: center;
+      padding: 30px 10px;
+    }
+
+    .success h2 {
+      color: #1f4e79;
+      margin-bottom: 10px;
+    }
+
+    .small {
+      font-size: 12px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="header">部品管理システム</div>
+
+    <div class="content">
+      <div id="formScreen">
+        <div class="progress" id="progressText">1 / 8</div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+
+        <div id="stepContainer"></div>
+      </div>
+
+      <div id="confirmScreen" class="hidden">
+        <div class="section-title">入力内容の確認</div>
+        <div class="summary-card" id="summaryCard"></div>
+      </div>
+
+      <div id="successScreen" class="hidden success">
+        <h2>登録が完了しました</h2>
+        <p>部品情報を保存しました。</p>
+      </div>
+
+      <div id="listScreen" class="hidden">
+        <div class="top-actions">
+          <button class="btn-next" onclick="restartForm()">新しく登録</button>
+          <button class="btn-secondary" onclick="exportCSV()">CSV出力</button>
+        </div>
+        <div class="section-title">登録済みデータ</div>
+        <div id="recordList"></div>
+      </div>
+    </div>
+
+    <div class="footer" id="footerButtons">
+      <button class="btn-back" onclick="prevStep()">戻る</button>
+      <button class="btn-next" onclick="nextStep()">次へ</button>
+    </div>
+  </div>
+
+  <script>
+    const steps = [
+      { key: 'siteName', label: '現場名を入力してください', type: 'text', placeholder: '例：大阪第2工場 改修工事' },
+      { key: 'manager', label: '担当者名を入力してください', type: 'text', placeholder: '例：山田 太郎' },
+      { key: 'deviceName', label: '機器名を入力してください', type: 'text', placeholder: '例：制御盤A-01' },
+      { key: 'deviceModel', label: '機器の型番を入力してください', type: 'text', placeholder: '例：CP-4500X' },
+      { key: 'partName', label: '部品名を入力してください', type: 'text', placeholder: '例：電源ユニット' },
+      { key: 'partModel', label: '部品の型番を入力してください', type: 'text', placeholder: '例：PSU-24V-10A' },
+      { key: 'partLocation', label: 'この部品の使用箇所を入力してください', type: 'text', placeholder: '例：制御盤内部 右上' },
+      { key: 'photo', label: '部品の写真を追加してください', type: 'file' },
+      { key: 'memo', label: '補足説明があれば入力してください', type: 'textarea', placeholder: '例：交換時は配線色を確認' }
+    ];
+
+    let currentStep = 0;
+    const formData = {};
+    const records = [];
+
+    function renderStep() {
+      const step = steps[currentStep];
+      const container = document.getElementById('stepContainer');
+      const progressText = document.getElementById('progressText');
+      const progressFill = document.getElementById('progressFill');
+
+      progressText.textContent = `${currentStep + 1} / ${steps.length}`;
+      progressFill.style.width = `${((currentStep + 1) / steps.length) * 100}%`;
+
+      let inputHTML = '';
+
+      if (step.type === 'textarea') {
+        inputHTML = `
+          <textarea id="stepInput" placeholder="${step.placeholder || ''}">${formData[step.key] || ''}</textarea>
+        `;
+      } else if (step.type === 'file') {
+        inputHTML = `
+          <input type="file" id="stepInput" accept="image/*" capture="environment" />
+          <img id="photoPreview" class="photo-preview" />
+          <div class="small">スマホで撮影または写真を選択できます</div>
+        `;
+      } else {
+        inputHTML = `
+          <input type="${step.type}" id="stepInput" placeholder="${step.placeholder || ''}" value="${formData[step.key] || ''}" />
+        `;
+      }
+
+      container.innerHTML = `
+        <div class="question">${step.label}</div>
+        <div class="subtext">質問に沿って入力してください</div>
+        ${inputHTML}
+      `;
+
+      if (step.type === 'file') {
+        const input = document.getElementById('stepInput');
+        const preview = document.getElementById('photoPreview');
+
+        if (formData.photoPreview) {
+          preview.src = formData.photoPreview;
+          preview.style.display = 'block';
+        }
+
+        input.addEventListener('change', function() {
+          const file = this.files[0];
+          if (file) {
+            formData.photoName = file.name;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+              formData.photoPreview = e.target.result;
+              preview.src = e.target.result;
+              preview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+          }
+        });
+      }
+
+      document.getElementById('footerButtons').classList.remove('hidden');
+      document.getElementById('formScreen').classList.remove('hidden');
+      document.getElementById('confirmScreen').classList.add('hidden');
+      document.getElementById('successScreen').classList.add('hidden');
+      document.getElementById('listScreen').classList.add('hidden');
+    }
+
+    function saveCurrentStep() {
+      const step = steps[currentStep];
+      const input = document.getElementById('stepInput');
+
+      if (step.type === 'file') {
+        return true;
+      }
+
+      const value = input.value.trim();
+      formData[step.key] = value;
+      return value !== '' || step.key === 'memo';
+    }
+
+    function nextStep() {
+      const step = steps[currentStep];
+
+      if (step.type !== 'file') {
+        const valid = saveCurrentStep();
+        if (!valid) {
+          alert('入力してください。');
+          return;
+        }
+      }
+
+      if (step.type === 'file' && !formData.photoPreview) {
+        alert('写真を追加してください。');
+        return;
+      }
+
+      if (currentStep < steps.length - 1) {
+        currentStep++;
+        renderStep();
+      } else {
+        showConfirm();
+      }
+    }
+
+    function prevStep() {
+      if (currentStep > 0) {
+        if (steps[currentStep].type !== 'file') {
+          saveCurrentStep();
+        }
+        currentStep--;
+        renderStep();
+      }
+    }
+
+    function showConfirm() {
+      if (steps[currentStep].type !== 'file') {
+        saveCurrentStep();
+      }
+
+      document.getElementById('formScreen').classList.add('hidden');
+      document.getElementById('confirmScreen').classList.remove('hidden');
+      document.getElementById('successScreen').classList.add('hidden');
+      document.getElementById('listScreen').classList.add('hidden');
+
+      document.getElementById('summaryCard').innerHTML = `
+        <p><strong>現場名：</strong>${formData.siteName || ''}</p>
+        <p><strong>担当者：</strong>${formData.manager || ''}</p>
+        <p><strong>機器名：</strong>${formData.deviceName || ''}</p>
+        <p><strong>機器型番：</strong>${formData.deviceModel || ''}</p>
+        <p><strong>部品名：</strong>${formData.partName || ''}</p>
+        <p><strong>部品型番：</strong>${formData.partModel || ''}</p>
+        <p><strong>使用箇所：</strong>${formData.partLocation || ''}</p>
+        <p><strong>補足説明：</strong>${formData.memo || ''}</p>
+        ${formData.photoPreview ? `<img src="${formData.photoPreview}" class="photo-preview" style="display:block;" />` : ''}
+      `;
+
+      document.getElementById('footerButtons').innerHTML = `
+        <button class="btn-back" onclick="editAgain()">修正する</button>
+        <button class="btn-next" onclick="submitForm()">登録する</button>
+      `;
+    }
+
+    function editAgain() {
+      document.getElementById('footerButtons').innerHTML = `
+        <button class="btn-back" onclick="prevStep()">戻る</button>
+        <button class="btn-next" onclick="nextStep()">次へ</button>
+      `;
+      renderStep();
+    }
+
+    function submitForm() {
+      records.push({
+        siteName: formData.siteName || '',
+        manager: formData.manager || '',
+        deviceName: formData.deviceName || '',
+        deviceModel: formData.deviceModel || '',
+        partName: formData.partName || '',
+        partModel: formData.partModel || '',
+        partLocation: formData.partLocation || '',
+        memo: formData.memo || '',
+        photoName: formData.photoName || '',
+        photoPreview: formData.photoPreview || ''
+      });
+
+      document.getElementById('confirmScreen').classList.add('hidden');
+      document.getElementById('successScreen').classList.remove('hidden');
+      document.getElementById('footerButtons').innerHTML = `
+        <button class="btn-next" onclick="showList()">登録一覧を見る</button>
+      `;
+    }
+
+    function showList() {
+      document.getElementById('formScreen').classList.add('hidden');
+      document.getElementById('confirmScreen').classList.add('hidden');
+      document.getElementById('successScreen').classList.add('hidden');
+      document.getElementById('listScreen').classList.remove('hidden');
+      document.getElementById('footerButtons').classList.add('hidden');
+
+      const recordList = document.getElementById('recordList');
+      recordList.innerHTML = '';
+
+      records.forEach((r, index) => {
+        const card = document.createElement('div');
+        card.className = 'record-card';
+        card.innerHTML = `
+          <p><strong>登録No：</strong>${index + 1}</p>
+          <p><strong>現場名：</strong>${r.siteName}</p>
+          <p><strong>機器名：</strong>${r.deviceName}</p>
+          <p><strong>機器型番：</strong>${r.deviceModel}</p>
+          <p><strong>部品名：</strong>${r.partName}</p>
+          <p><strong>部品型番：</strong>${r.partModel}</p>
+          <p><strong>使用箇所：</strong>${r.partLocation}</p>
+          <p><strong>補足説明：</strong>${r.memo}</p>
+          ${r.photoPreview ? `<img src="${r.photoPreview}" class="photo-preview" style="display:block;" />` : ''}
+        `;
+        recordList.appendChild(card);
+      });
+    }
+
+    function restartForm() {
+      currentStep = 0;
+      for (const key in formData) delete formData[key];
+
+      document.getElementById('footerButtons').classList.remove('hidden');
+      document.getElementById('footerButtons').innerHTML = `
+        <button class="btn-back" onclick="prevStep()">戻る</button>
+        <button class="btn-next" onclick="nextStep()">次へ</button>
+      `;
+
+      renderStep();
+    }
+
+    function exportCSV() {
+      if (records.length === 0) {
+        alert('出力するデータがありません。');
+        return;
+      }
+
+      const headers = ['現場名', '担当者', '機器名', '機器型番', '部品名', '部品型番', '使用箇所', '補足説明', '写真ファイル名'];
+      const rows = records.map(r => [
+        r.siteName,
+        r.manager,
+        r.deviceName,
+        r.deviceModel,
+        r.partName,
+        r.partModel,
+        r.partLocation,
+        r.memo,
+        r.photoName
+      ]);
+
+      let csvContent = '\uFEFF' + headers.join(',') + '\n';
+      rows.forEach(row => {
+        csvContent += row.map(value => `"${value}"`).join(',') + '\n';
+      });
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', '部品管理データ.csv');
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    renderStep();
+  </script>
+</body>
+</html>
+
+このHTMLのポイント
+スマホで見やすい
+1問ずつ入力できる
+写真をその場で選べる
+最後に確認できる
+登録後に一覧で見られる
+CSV出力できる
+ただしこの段階は試作です 今のコードは ブラウザ上だけで動くモック なので、
+ページを閉じるとデータは消える
+本当のログイン機能はまだない
+写真はサーバー保存していない
+ExcelはCSV出力のみ
+次に入れると実務向けになる機能
+LocalStorage保存
+編集・削除
+現場名の候補選択
+使用箇所を選択式にする
+部品写真を複数登録
+機器ごとに部品を一覧表示
+ログイン機能
+サーバー保存
+このシステムの入力精度を上げるなら、次は 自由入力を減らして選択式を増やす のがかなり効果的です。
+たとえば「使用箇所」は自由入力より、制御盤内部・電源部・基板部・配線部 のように選べるほうが現場でブレません。
+次は 現場名・使用箇所・機器名を選択式にした改良版 にしますか？ それとも 登録データを消えないように保存する版 にしますか？
