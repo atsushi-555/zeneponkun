@@ -22,7 +22,6 @@
       flex-direction: column;
     }
 
-    /* ヘッダーのスタイル修正（flexと配置調整の追加） */
     .header {
       background: #1f4e79;
       color: white;
@@ -32,17 +31,15 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      gap: 10px; /* テキストと画像の隙間 */
+      gap: 10px;
     }
 
-    /* ヘッダータイトルのスタイル追加 */
     .header-title {
       line-height: 1.2;
     }
 
-    /* ひーぽんくん画像のスタイル追加 */
     .header-char {
-      height: 40px; /* ヘッダーに綺麗に収まる高さ */
+      height: 40px;
       width: auto;
       object-fit: contain;
     }
@@ -246,11 +243,26 @@
       font-weight: bold;
       margin-top: 6px;
     }
+
+    /* 検索入力ボックス用のスタイル追加 */
+    .search-box-container {
+      margin-bottom: 16px;
+    }
+    .search-input {
+      border: 2px solid #1f4e79;
+      padding: 12px;
+      font-size: 15px;
+      margin-bottom: 4px;
+    }
+    .search-hint {
+      font-size: 11px;
+      color: #666;
+      padding-left: 4px;
+    }
   </style>
 </head>
 <body>
   <div class="app">
-    <!-- ヘッダー表示部分の書き換え（相対パス指定） -->
     <div class="header">
       <div class="header-title">部品がわかるよひーぽん君</div>
       <img src="./hipon.png" alt="ひーぽんくん" class="header-char" />
@@ -283,6 +295,12 @@
           <button class="btn-secondary" onclick="exportCSV()">CSV出力</button>
         </div>
         <div class="section-title">登録済みデータ</div>
+        
+        <div class="search-box-container">
+          <input type="text" id="searchInput" class="search-input" placeholder="現場名・部品名などの先頭ワードを入力..." oninput="filterList()" />
+          <div class="search-hint">※入力された文字から始まるデータ（先頭一致）を検索します</div>
+        </div>
+
         <div id="recordList"></div>
       </div>
     </div>
@@ -294,7 +312,6 @@
   </div>
 
   <script>
-    // マスタデータの定義
     const masterData = {
       siteName: ['KOKOHOTEL', 'おんぽいの湯', '北津島病院', '阿下喜温泉'],
       deviceName: ['水冷式', '空冷式'],
@@ -570,6 +587,7 @@
       }
     }
 
+    // 登録一覧の描画および検索処理を行うメイン処理
     function showList() {
       editIndex = null;
       document.getElementById('formScreen').classList.add('hidden');
@@ -578,6 +596,14 @@
       document.getElementById('listScreen').classList.remove('hidden');
       document.getElementById('footerButtons').classList.add('hidden');
 
+      // 画面表示時に前回の検索ワードをクリア
+      document.getElementById('searchInput').value = '';
+
+      renderRecords(records);
+    }
+
+    // レコードリストを実際にHTMLとして出力する処理
+    function renderRecords(targetRecords) {
       const recordList = document.getElementById('recordList');
       recordList.innerHTML = '';
 
@@ -586,15 +612,23 @@
         return;
       }
 
-      records.forEach((r, index) => {
+      if (targetRecords.length === 0) {
+        recordList.innerHTML = '<p style="text-align:center; color:#e65100; margin-top:20px;">一致する先頭ワードのデータはありません。</p>';
+        return;
+      }
+
+      targetRecords.forEach((r) => {
+        // 元のrecords配列における本物のインデックスを探す（編集・削除のため）
+        const originalIndex = records.findIndex(orig => orig === r);
+
         const card = document.createElement('div');
         card.className = 'record-card';
         card.innerHTML = `
           <div class="record-card-header">
-            <strong>登録No：${index + 1}</strong>
+            <strong>登録No：${originalIndex + 1}</strong>
             <div class="btn-action-group">
-              <button class="btn-edit" onclick="startEdit(${index})">編集</button>
-              <button class="btn-danger" onclick="deleteRecord(${index})">削除</button>
+              <button class="btn-edit" onclick="startEdit(${originalIndex})">編集</button>
+              <button class="btn-danger" onclick="deleteRecord(${originalIndex})">削除</button>
             </div>
           </div>
           <p><strong>現場名：</strong>${r.siteName}</p>
@@ -608,6 +642,26 @@
         `;
         recordList.appendChild(card);
       });
+    }
+
+    // 【追加】入力されたワードで先頭文字一致（前方一致）検索をかける関数
+    function filterList() {
+      const query = document.getElementById('searchInput').value.trim().toLowerCase();
+      
+      if (query === '') {
+        renderRecords(records); // 空白なら全件表示
+        return;
+      }
+
+      // 「現場名」「部品名」「部品型番」のいずれかが、入力された文字から始まっているデータ（前方一致）を抽出
+      const filtered = records.filter(r => {
+        const matchSite = r.siteName.toLowerCase().startsWith(query);
+        const matchPart = r.partName.toLowerCase().startsWith(query);
+        const matchModel = r.partModel.toLowerCase().startsWith(query);
+        return matchSite || matchPart || matchModel;
+      });
+
+      renderRecords(filtered);
     }
 
     function startEdit(index) {
