@@ -313,11 +313,19 @@
   </div>
 
   <script>
+    // 部品名ごとに選択させたい型番を定義します
     const masterData = {
       siteName: ['KOKOHOTEL', 'おんぽいの湯', '北津島病院', '阿下喜温泉'],
       deviceName: ['水冷式', '空冷式'],
       deviceMode: ['HU-1', 'WHU-1', 'CH-1', 'ZQ-1'],
       partName: ['コンプレッサー', 'アキュームレーター', 'オイルセパレーター', '四方弁', '三方弁', '二方弁', '水熱交換器', '空気熱交換器', '膨張弁', 'キャピラリーチューブ', '排気ファン'],
+      partModel: {
+        'コンプレッサー': ['ZR190KCE-TWC-551', 'ZR160KC-TFD-522', 'ZB45KCE-TFD-551'],
+        'アキュームレーター': ['A-701', 'A-702'],
+        'オイルセパレーター': ['O-501', 'O-502'],
+        '四方弁': ['V-401', 'V-402'],
+        // 必要に応じて他の部品名の型番リストもここに追加できます
+      },
       partLocation: ['1系統', '2系統', '3系統', '4系統', '5系統', '6系統', '7系統', '8系統', '9系統', '10系統']
     };
 
@@ -325,8 +333,8 @@
       { key: 'siteName', label: '現場名を選択してください', type: 'select', options: masterData.siteName },
       { key: 'deviceName', label: '機器の種類を選択してください', type: 'select', options: masterData.deviceName },
       { key: 'deviceModel', label: '機器の型番を選択してください', type: 'select', options: masterData.deviceMode },
-      { key: 'partName', label: '部品名を入力してください', type: 'select', options: masterData.partName },
-      { key: 'partModel', label: '部品の型番を入力してください', type: 'text', placeholder: '例：ZR190KCE-TWC-551' },
+      { key: 'partName', label: '部品名を選択してください', type: 'select', options: masterData.partName },
+      { key: 'partModel', label: '部品の型番を選択してください', type: 'select', options: [] }, // optionsは後から動的にセットします
       { key: 'partLocation', label: '部品の使用系統を選択してください', type: 'select', options: masterData.partLocation },
       { key: 'photo', label: '部品の写真を追加してください', type: 'file' },
       { key: 'memo', label: '補足説明があれば入力してください', type: 'textarea', placeholder: '例：2026.1.1交換' }
@@ -341,7 +349,7 @@
     function renderStep() {
       const step = steps[currentStep];
       const container = document.getElementById('stepContainer');
-      const progressText = document.getElementById('progressText'); // ← 半角に修正しました
+      const progressText = document.getElementById('progressText');
       const progressFill = document.getElementById('progressFill');
       const editModeBadge = document.getElementById('editModeBadge');
 
@@ -354,6 +362,12 @@
 
       progressText.textContent = `${currentStep + 1} / ${steps.length}`;
       progressFill.style.width = `${((currentStep + 1) / steps.length) * 100}%`;
+
+      // partModel のステップの時だけ、直前で選んだ partName に応じた選択肢をセットする
+      if (step.key === 'partModel') {
+        const selectedPartName = formData['partName'];
+        step.options = masterData.partModel[selectedPartName] || [];
+      }
 
       let inputHTML = '';
 
