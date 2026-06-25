@@ -1,21 +1,9 @@
-はい、ではその方向で使える スマホ向け・質問形式のHTMLモック を作ります。
-1ファイルで動くようにして、現場 → 機器 → 部品 → 写真 → 確認 の流れにします。
-この試作版でできることは次の通りです。
-スマホ向け画面
-1問ずつ入力
-進捗表示
-写真選択
-最後に確認画面
-登録完了メッセージ
-入力内容を一覧表示
-CSVエクスポート
-そのまま index.html として保存して使えます。
 <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>部品管理システム（質問形式）</title>
+  <title>部品管理システム（編集機能付き）</title>
   <style>
     body {
       margin: 0;
@@ -46,6 +34,17 @@ CSVエクスポート
     .content {
       padding: 20px 16px 100px;
       flex: 1;
+    }
+
+    .edit-mode-badge {
+      background: #e65100;
+      color: white;
+      padding: 6px 12px;
+      font-size: 13px;
+      font-weight: bold;
+      border-radius: 6px;
+      margin-bottom: 12px;
+      text-align: center;
     }
 
     .progress {
@@ -91,6 +90,7 @@ CSVエクスポート
       border-radius: 10px;
       box-sizing: border-box;
       margin-bottom: 16px;
+      background-color: #fff;
     }
 
     textarea {
@@ -125,6 +125,7 @@ CSVエクスポート
       border: none;
       border-radius: 10px;
       cursor: pointer;
+      font-weight: bold;
     }
 
     .btn-back {
@@ -137,6 +138,29 @@ CSVエクスポート
       color: white;
     }
 
+    .btn-action-group {
+      display: flex;
+      gap: 6px;
+    }
+
+    .btn-edit {
+      background: #e2e8f0;
+      color: #1f4e79;
+      padding: 6px 12px;
+      font-size: 12px;
+      border-radius: 6px;
+      flex: none;
+    }
+
+    .btn-danger {
+      background: #d32f2f;
+      color: white;
+      padding: 6px 12px;
+      font-size: 12px;
+      border-radius: 6px;
+      flex: none;
+    }
+
     .hidden {
       display: none;
     }
@@ -147,6 +171,15 @@ CSVエクスポート
       border-radius: 12px;
       padding: 14px;
       margin-bottom: 12px;
+    }
+
+    .record-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #d7e4f2;
+      padding-bottom: 8px;
+      margin-bottom: 8px;
     }
 
     .summary-card p, .record-card p {
@@ -199,7 +232,8 @@ CSVエクスポート
 
     <div class="content">
       <div id="formScreen">
-        <div class="progress" id="progressText">1 / 8</div>
+        <div id="editModeBadge" class="edit-mode-badge hidden">データ修整中</div>
+        <div class="progress" id="progressText">1 / 9</div>
         <div class="progress-bar">
           <div class="progress-fill" id="progressFill"></div>
         </div>
@@ -208,13 +242,13 @@ CSVエクスポート
       </div>
 
       <div id="confirmScreen" class="hidden">
-        <div class="section-title">入力内容の確認</div>
+        <div class="section-title" id="confirmTitle">入力内容の確認</div>
         <div class="summary-card" id="summaryCard"></div>
       </div>
 
       <div id="successScreen" class="hidden success">
-        <h2>登録が完了しました</h2>
-        <p>部品情報を保存しました。</p>
+        <h2 id="successMessageTitle">登録が完了しました</h2>
+        <p>部品情報をブラウザに保存しました。</p>
       </div>
 
       <div id="listScreen" class="hidden">
@@ -234,34 +268,70 @@ CSVエクスポート
   </div>
 
   <script>
+    // マスタデータの定義
+    const masterData = {
+      siteName: ['大阪第1工場', '大阪第2工場 改修工事', '東京本社ビル', '名古屋物流センター'],
+      deviceName: ['制御盤A-01', '動力盤B-02', '空調管理システム', '非常用発電機'],
+      partLocation: ['制御盤内部 右上', '電源駆動部', 'メイン基板エリア', '外部配線接続部']
+    };
+
     const steps = [
-      { key: 'siteName', label: '現場名を入力してください', type: 'text', placeholder: '例：大阪第2工場 改修工事' },
+      { key: 'siteName', label: '現場名を選択してください', type: 'select', options: masterData.siteName },
       { key: 'manager', label: '担当者名を入力してください', type: 'text', placeholder: '例：山田 太郎' },
-      { key: 'deviceName', label: '機器名を入力してください', type: 'text', placeholder: '例：制御盤A-01' },
+      { key: 'deviceName', label: '機器名を選択してください', type: 'select', options: masterData.deviceName },
       { key: 'deviceModel', label: '機器の型番を入力してください', type: 'text', placeholder: '例：CP-4500X' },
       { key: 'partName', label: '部品名を入力してください', type: 'text', placeholder: '例：電源ユニット' },
       { key: 'partModel', label: '部品の型番を入力してください', type: 'text', placeholder: '例：PSU-24V-10A' },
-      { key: 'partLocation', label: 'この部品の使用箇所を入力してください', type: 'text', placeholder: '例：制御盤内部 右上' },
+      { key: 'partLocation', label: '部品の使用箇所を選択してください', type: 'select', options: masterData.partLocation },
       { key: 'photo', label: '部品の写真を追加してください', type: 'file' },
       { key: 'memo', label: '補足説明があれば入力してください', type: 'textarea', placeholder: '例：交換時は配線色を確認' }
     ];
 
     let currentStep = 0;
-    const formData = {};
-    const records = [];
+    let formData = {};
+    let editIndex = null; // 編集中のデータのインデックス（nullの場合は新規登録）
+    
+    // LocalStorageからデータを読み込み
+    let records = JSON.parse(localStorage.getItem('parts_records')) || [];
 
     function renderStep() {
       const step = steps[currentStep];
       const container = document.getElementById('stepContainer');
       const progressText = document.getElementById('progressText');
       const progressFill = document.getElementById('progressFill');
+      const editModeBadge = document.getElementById('editModeBadge');
+
+      // 編集モード時の表示切り替え
+      if (editIndex !== null) {
+        editModeBadge.textContent = `登録No.${editIndex + 1} のデータを修正中`;
+        editModeBadge.classList.remove('hidden');
+      } else {
+        editModeBadge.classList.add('hidden');
+      }
 
       progressText.textContent = `${currentStep + 1} / ${steps.length}`;
       progressFill.style.width = `${((currentStep + 1) / steps.length) * 100}%`;
 
       let inputHTML = '';
 
-      if (step.type === 'textarea') {
+      if (step.type === 'select') {
+        const isCustom = formData[step.key] && !step.options.includes(formData[step.key]);
+        
+        inputHTML = `<select id="stepInput" onchange="toggleCustomInput(this)">`;
+        inputHTML += `<option value="">-- 選択してください --</option>`;
+        step.options.forEach(opt => {
+          const selected = formData[step.key] === opt ? 'selected' : '';
+          inputHTML += `<option value="${opt}" ${selected}>${opt}</option>`;
+        });
+        inputHTML += `<option value="__custom__" ${isCustom ? 'selected' : ''}>その他（直接入力）</option>`;
+        inputHTML += `</select>`;
+
+        inputHTML += `
+          <input type="text" id="customInput" class="${isCustom ? '' : 'hidden'}" 
+                 placeholder="こちらに直接入力してください" 
+                 value="${isCustom ? formData[step.key] : ''}" />
+        `;
+      } else if (step.type === 'textarea') {
         inputHTML = `
           <textarea id="stepInput" placeholder="${step.placeholder || ''}">${formData[step.key] || ''}</textarea>
         `;
@@ -269,7 +339,7 @@ CSVエクスポート
         inputHTML = `
           <input type="file" id="stepInput" accept="image/*" capture="environment" />
           <img id="photoPreview" class="photo-preview" />
-          <div class="small">スマホで撮影または写真を選択できます</div>
+          <div class="small">スマホで撮影または写真を選択できます（変更しない場合はそのままでOK）</div>
         `;
       } else {
         inputHTML = `
@@ -279,7 +349,7 @@ CSVエクスポート
 
       container.innerHTML = `
         <div class="question">${step.label}</div>
-        <div class="subtext">質問に沿って入力してください</div>
+        <div class="subtext">項目に沿って入力・選択してください</div>
         ${inputHTML}
       `;
 
@@ -314,17 +384,33 @@ CSVエクスポート
       document.getElementById('listScreen').classList.add('hidden');
     }
 
+    function toggleCustomInput(selectElem) {
+      const customInput = document.getElementById('customInput');
+      if (selectElem.value === '__custom__') {
+        customInput.classList.remove('hidden');
+        customInput.focus();
+      } else {
+        customInput.classList.add('hidden');
+        customInput.value = '';
+      }
+    }
+
     function saveCurrentStep() {
       const step = steps[currentStep];
-      const input = document.getElementById('stepInput');
+      if (step.type === 'file') return true;
 
-      if (step.type === 'file') {
-        return true;
+      if (step.type === 'select') {
+        const selectValue = document.getElementById('stepInput').value;
+        if (selectValue === '__custom__') {
+          formData[step.key] = document.getElementById('customInput').value.trim();
+        } else {
+          formData[step.key] = selectValue;
+        }
+      } else {
+        formData[step.key] = document.getElementById('stepInput').value.trim();
       }
 
-      const value = input.value.trim();
-      formData[step.key] = value;
-      return value !== '' || step.key === 'memo';
+      return formData[step.key] !== '' || step.key === 'memo';
     }
 
     function nextStep() {
@@ -333,7 +419,7 @@ CSVエクスポート
       if (step.type !== 'file') {
         const valid = saveCurrentStep();
         if (!valid) {
-          alert('入力してください。');
+          alert('入力または選択をしてください。');
           return;
         }
       }
@@ -353,23 +439,22 @@ CSVエクスポート
 
     function prevStep() {
       if (currentStep > 0) {
-        if (steps[currentStep].type !== 'file') {
-          saveCurrentStep();
-        }
+        if (steps[currentStep].type !== 'file') saveCurrentStep();
         currentStep--;
         renderStep();
       }
     }
 
     function showConfirm() {
-      if (steps[currentStep].type !== 'file') {
-        saveCurrentStep();
-      }
+      if (steps[currentStep].type !== 'file') saveCurrentStep();
 
       document.getElementById('formScreen').classList.add('hidden');
       document.getElementById('confirmScreen').classList.remove('hidden');
       document.getElementById('successScreen').classList.add('hidden');
       document.getElementById('listScreen').classList.add('hidden');
+
+      const titleElem = document.getElementById('confirmTitle');
+      titleElem.textContent = editIndex !== null ? `修正内容の確認 (No.${editIndex + 1})` : "入力内容の確認";
 
       document.getElementById('summaryCard').innerHTML = `
         <p><strong>現場名：</strong>${formData.siteName || ''}</p>
@@ -383,9 +468,10 @@ CSVエクスポート
         ${formData.photoPreview ? `<img src="${formData.photoPreview}" class="photo-preview" style="display:block;" />` : ''}
       `;
 
+      const submitText = editIndex !== null ? '更新する' : '登録する';
       document.getElementById('footerButtons').innerHTML = `
         <button class="btn-back" onclick="editAgain()">修正する</button>
-        <button class="btn-next" onclick="submitForm()">登録する</button>
+        <button class="btn-next" onclick="submitForm()">${submitText}</button>
       `;
     }
 
@@ -398,7 +484,7 @@ CSVエクスポート
     }
 
     function submitForm() {
-      records.push({
+      const dataToSave = {
         siteName: formData.siteName || '',
         manager: formData.manager || '',
         deviceName: formData.deviceName || '',
@@ -409,7 +495,22 @@ CSVエクスポート
         memo: formData.memo || '',
         photoName: formData.photoName || '',
         photoPreview: formData.photoPreview || ''
-      });
+      };
+
+      const successTitleElem = document.getElementById('successMessageTitle');
+
+      if (editIndex !== null) {
+        // 編集モード：既存のデータを置き換え
+        records[editIndex] = dataToSave;
+        successTitleElem.textContent = "変更を保存しました";
+      } else {
+        // 新規登録モード：末尾に追加
+        records.push(dataToSave);
+        successTitleElem.textContent = "登録が完了しました";
+      }
+
+      // LocalStorageにデータを保存
+      localStorage.setItem('parts_records', JSON.stringify(records));
 
       document.getElementById('confirmScreen').classList.add('hidden');
       document.getElementById('successScreen').classList.remove('hidden');
@@ -419,6 +520,7 @@ CSVエクスポート
     }
 
     function showList() {
+      editIndex = null; // 編集状態をクリア
       document.getElementById('formScreen').classList.add('hidden');
       document.getElementById('confirmScreen').classList.add('hidden');
       document.getElementById('successScreen').classList.add('hidden');
@@ -428,12 +530,24 @@ CSVエクスポート
       const recordList = document.getElementById('recordList');
       recordList.innerHTML = '';
 
+      if (records.length === 0) {
+        recordList.innerHTML = '<p style="text-align:center; color:#999; margin-top:20px;">登録されたデータはありません。</p>';
+        return;
+      }
+
       records.forEach((r, index) => {
         const card = document.createElement('div');
         card.className = 'record-card';
         card.innerHTML = `
-          <p><strong>登録No：</strong>${index + 1}</p>
+          <div class="record-card-header">
+            <strong>登録No：${index + 1}</strong>
+            <div class="btn-action-group">
+              <button class="btn-edit" onclick="startEdit(${index})">編集</button>
+              <button class="btn-danger" onclick="deleteRecord(${index})">削除</button>
+            </div>
+          </div>
           <p><strong>現場名：</strong>${r.siteName}</p>
+          <p><strong>担当者：</strong>${r.manager}</p>
           <p><strong>機器名：</strong>${r.deviceName}</p>
           <p><strong>機器型番：</strong>${r.deviceModel}</p>
           <p><strong>部品名：</strong>${r.partName}</p>
@@ -446,9 +560,34 @@ CSVエクスポート
       });
     }
 
+    // 編集処理の開始
+    function startEdit(index) {
+      editIndex = index;
+      // 選択した過去のデータをformDataにディープコピーして復元
+      formData = JSON.parse(JSON.stringify(records[index]));
+      currentStep = 0;
+
+      document.getElementById('footerButtons').classList.remove('hidden');
+      document.getElementById('footerButtons').innerHTML = `
+        <button class="btn-back" onclick="prevStep()">戻る</button>
+        <button class="btn-next" onclick="nextStep()">次へ</button>
+      `;
+
+      renderStep();
+    }
+
+    function deleteRecord(index) {
+      if (confirm(`登録No.${index + 1} のデータを削除してもよろしいですか？`)) {
+        records.splice(index, 1);
+        localStorage.setItem('parts_records', JSON.stringify(records));
+        showList();
+      }
+    }
+
     function restartForm() {
       currentStep = 0;
-      for (const key in formData) delete formData[key];
+      formData = {};
+      editIndex = null;
 
       document.getElementById('footerButtons').classList.remove('hidden');
       document.getElementById('footerButtons').innerHTML = `
@@ -480,7 +619,7 @@ CSVエクスポート
 
       let csvContent = '\uFEFF' + headers.join(',') + '\n';
       rows.forEach(row => {
-        csvContent += row.map(value => `"${value}"`).join(',') + '\n';
+        csvContent += row.map(value => `"${value.replace(/"/g, '""')}"`).join(',') + '\n';
       });
 
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -494,32 +633,12 @@ CSVエクスポート
       document.body.removeChild(link);
     }
 
-    renderStep();
+    // 初期状態：データがあれば一覧、なければフォーム
+    if (records.length > 0) {
+      showList();
+    } else {
+      renderStep();
+    }
   </script>
 </body>
 </html>
-
-このHTMLのポイント
-スマホで見やすい
-1問ずつ入力できる
-写真をその場で選べる
-最後に確認できる
-登録後に一覧で見られる
-CSV出力できる
-ただしこの段階は試作です 今のコードは ブラウザ上だけで動くモック なので、
-ページを閉じるとデータは消える
-本当のログイン機能はまだない
-写真はサーバー保存していない
-ExcelはCSV出力のみ
-次に入れると実務向けになる機能
-LocalStorage保存
-編集・削除
-現場名の候補選択
-使用箇所を選択式にする
-部品写真を複数登録
-機器ごとに部品を一覧表示
-ログイン機能
-サーバー保存
-このシステムの入力精度を上げるなら、次は 自由入力を減らして選択式を増やす のがかなり効果的です。
-たとえば「使用箇所」は自由入力より、制御盤内部・電源部・基板部・配線部 のように選べるほうが現場でブレません。
-次は 現場名・使用箇所・機器名を選択式にした改良版 にしますか？ それとも 登録データを消えないように保存する版 にしますか？
