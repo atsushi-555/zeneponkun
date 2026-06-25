@@ -250,15 +250,16 @@
 </head>
 <body>
   <div class="app">
+    <!-- ヘッダー表示部分の書き換え（相対パス指定） -->
     <div class="header">
       <div class="header-title">部品がわかるよひーぽん君</div>
-      <img src="hipon.png" alt="ひーぽんくん" class="header-char" />
+      <img src="./hipon.png" alt="ひーぽんくん" class="header-char" />
     </div>
 
     <div class="content">
       <div id="formScreen">
         <div id="editModeBadge" class="edit-mode-badge hidden">データ修正中</div>
-        <div class="progress" id="progressText">1 / 9</div>
+        <div class="progress" id="progressText">1 / 8</div>
         <div class="progress-bar">
           <div class="progress-fill" id="progressFill"></div>
         </div>
@@ -293,7 +294,7 @@
   </div>
 
   <script>
-    // マスタデータの定義（※「deviceMode：」となっていた全角コロンを半角コロンに修正しました）
+    // マスタデータの定義
     const masterData = {
       siteName: ['KOKOHOTEL', 'おんぽいの湯', '北津島病院', '阿下喜温泉'],
       deviceName: ['水冷式', '空冷式'],
