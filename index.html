@@ -325,7 +325,7 @@
       { key: 'siteName', label: '現場名を選択してください', type: 'select', options: masterData.siteName },
       { key: 'deviceName', label: '機器の種類を選択してください', type: 'select', options: masterData.deviceName },
       { key: 'deviceModel', label: '機器の型番を選択してください', type: 'select', options: masterData.deviceMode },
-      { key: 'partName', label: '部品名を入力してください', type: 'text', placeholder: '例：圧縮機' },
+      { key: 'partName', label: '部品名を入力してください', type: 'text''select', options: masterData.partName },
       { key: 'partModel', label: '部品の型番を入力してください', type: 'text', placeholder: '例：ZR190KCE-TWC-551' },
       { key: 'partLocation', label: '部品の使用系統を選択してください', type: 'select', options: masterData.partLocation },
       { key: 'photo', label: '部品の写真を追加してください', type: 'file' },
@@ -341,7 +341,7 @@
     function renderStep() {
       const step = steps[currentStep];
       const container = document.getElementById('stepContainer');
-      const progressText = document.getElementById('progressText');
+      const progressText = document.getElementById('progreｍssText');
       const progressFill = document.getElementById('progressFill');
       const editModeBadge = document.getElementById('editModeBadge');
 
