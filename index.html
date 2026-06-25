@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>現場部品リスト（編集機能付き）</title>
+  <title>部品管理システム（実務・圧縮機能付き）</title>
   <style>
     body {
       margin: 0;
@@ -224,15 +224,22 @@
       font-size: 12px;
       color: #666;
     }
+
+    /* ローディング表示用のスタイル */
+    .loading-text {
+      color: #e65100;
+      font-weight: bold;
+      margin-top: 6px;
+    }
   </style>
 </head>
 <body>
   <div class="app">
-    <div class="header">現場部品リスト</div>
+    <div class="header">部品管理システム</div>
 
     <div class="content">
       <div id="formScreen">
-        <div id="editModeBadge" class="edit-mode-badge hidden">データ修整中</div>
+        <div id="editModeBadge" class="edit-mode-badge hidden">データ修正中</div>
         <div class="progress" id="progressText">1 / 9</div>
         <div class="progress-bar">
           <div class="progress-fill" id="progressFill"></div>
@@ -270,9 +277,9 @@
   <script>
     // マスタデータの定義
     const masterData = {
-      siteName: ['現場名'],
-      deviceName: ['ALP-1制御盤A-01', 'ヒートポンプ動力盤B-02', 'ヒートポンプ計装盤', 'ヒートポンプ計装増設盤'],
-      partLocation: ['制御盤内部 右上', '保護装置', 'メイン基板エリア', '外部配線接続部']
+      siteName: ['大阪第1工場', '大阪第2工場 改修工事', '東京本社ビル', '名古屋物流センター'],
+      deviceName: ['制御盤A-01', '動力盤B-02', '空調管理システム', '非常用発電機'],
+      partLocation: ['制御盤内部 右上', '電源駆動部', 'メイン基板エリア', '外部配線接続部']
     };
 
     const steps = [
@@ -289,7 +296,7 @@
 
     let currentStep = 0;
     let formData = {};
-    let editIndex = null; // 編集中のデータのインデックス（nullの場合は新規登録）
+    let editIndex = null; // 編集中のインデックス（nullなら新規登録）
     
     // LocalStorageからデータを読み込み
     let records = JSON.parse(localStorage.getItem('parts_records')) || [];
@@ -301,7 +308,6 @@
       const progressFill = document.getElementById('progressFill');
       const editModeBadge = document.getElementById('editModeBadge');
 
-      // 編集モード時の表示切り替え
       if (editIndex !== null) {
         editModeBadge.textContent = `登録No.${editIndex + 1} のデータを修正中`;
         editModeBadge.classList.remove('hidden');
@@ -336,10 +342,12 @@
           <textarea id="stepInput" placeholder="${step.placeholder || ''}">${formData[step.key] || ''}</textarea>
         `;
       } else if (step.type === 'file') {
+        // capture="environment" を削除し、カメラとフォトライブラリ両方から選べるように変更
         inputHTML = `
-          <input type="file" id="stepInput" accept="image/*" capture="environment" />
+          <input type="file" id="stepInput" accept="image/*" />
+          <div id="compressStatus" class="small hidden loading-text">写真を圧縮中...</div>
           <img id="photoPreview" class="photo-preview" />
-          <div class="small">スマホで撮影または写真を選択できます（変更しない場合はそのままでOK）</div>
+          <div class="small" style="margin-top:8px;">タップすると「カメラで撮影」か「フォトライブラリから選択」を選べます。</div>
         `;
       } else {
         inputHTML = `
@@ -356,6 +364,7 @@
       if (step.type === 'file') {
         const input = document.getElementById('stepInput');
         const preview = document.getElementById('photoPreview');
+        const status = document.getElementById('compressStatus');
 
         if (formData.photoPreview) {
           preview.src = formData.photoPreview;
@@ -366,11 +375,38 @@
           const file = this.files[0];
           if (file) {
             formData.photoName = file.name;
+            status.classList.remove('hidden'); // 圧縮中メッセージを表示
+
             const reader = new FileReader();
             reader.onload = function(e) {
-              formData.photoPreview = e.target.result;
-              preview.src = e.target.result;
-              preview.style.display = 'block';
+              const img = new Image();
+              img.onload = function() {
+                // 画像自動圧縮ロジック（最大幅800px、画質0.6のJPEGに変換）
+                const canvas = document.createElement('canvas');
+                const MAX_WIDTH = 800;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > MAX_WIDTH) {
+                  height *= MAX_WIDTH / width;
+                  width = MAX_WIDTH;
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // 画質を少し落として、容量を極限まで軽量化
+                const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.6);
+                
+                formData.photoPreview = compressedDataUrl;
+                preview.src = compressedDataUrl;
+                preview.style.display = 'block';
+                status.classList.add('hidden'); // 圧縮中メッセージを隠す
+              };
+              img.src = e.target.result;
             };
             reader.readAsDataURL(file);
           }
@@ -468,7 +504,7 @@
         ${formData.photoPreview ? `<img src="${formData.photoPreview}" class="photo-preview" style="display:block;" />` : ''}
       `;
 
-      const submitText = editIndex !== null ? '更新する' : '登録する';
+      const submitText = editIndex !== null ? '更新する（上書き）' : '登録する';
       document.getElementById('footerButtons').innerHTML = `
         <button class="btn-back" onclick="editAgain()">修正する</button>
         <button class="btn-next" onclick="submitForm()">${submitText}</button>
@@ -499,28 +535,31 @@
 
       const successTitleElem = document.getElementById('successMessageTitle');
 
-      if (editIndex !== null) {
-        // 編集モード：既存のデータを置き換え
-        records[editIndex] = dataToSave;
-        successTitleElem.textContent = "変更を保存しました";
-      } else {
-        // 新規登録モード：末尾に追加
-        records.push(dataToSave);
-        successTitleElem.textContent = "登録が完了しました";
+      try {
+        if (editIndex !== null) {
+          records[editIndex] = dataToSave;
+          successTitleElem.textContent = "変更を保存（上書き）しました";
+        } else {
+          records.push(dataToSave);
+          successTitleElem.textContent = "登録が完了しました";
+        }
+
+        // LocalStorageにデータを保存
+        localStorage.setItem('parts_records', JSON.stringify(records));
+
+        document.getElementById('confirmScreen').classList.add('hidden');
+        document.getElementById('successScreen').classList.remove('hidden');
+        document.getElementById('footerButtons').innerHTML = `
+          <button class="btn-next" onclick="showList()">登録一覧を見る</button>
+        `;
+      } catch (e) {
+        alert("エラー：保存に失敗しました。データ容量がブラウザの上限を超えています。古いデータを削除するかキャッシュをクリアしてください。");
+        console.error(e);
       }
-
-      // LocalStorageにデータを保存
-      localStorage.setItem('parts_records', JSON.stringify(records));
-
-      document.getElementById('confirmScreen').classList.add('hidden');
-      document.getElementById('successScreen').classList.remove('hidden');
-      document.getElementById('footerButtons').innerHTML = `
-        <button class="btn-next" onclick="showList()">登録一覧を見る</button>
-      `;
     }
 
     function showList() {
-      editIndex = null; // 編集状態をクリア
+      editIndex = null; // 状態クリア
       document.getElementById('formScreen').classList.add('hidden');
       document.getElementById('confirmScreen').classList.add('hidden');
       document.getElementById('successScreen').classList.add('hidden');
@@ -560,10 +599,10 @@
       });
     }
 
-    // 編集処理の開始
+    // 過去データの編集を開始する関数
     function startEdit(index) {
       editIndex = index;
-      // 選択した過去のデータをformDataにディープコピーして復元
+      // 過去データをformDataにコピーして復元
       formData = JSON.parse(JSON.stringify(records[index]));
       currentStep = 0;
 
@@ -633,7 +672,7 @@
       document.body.removeChild(link);
     }
 
-    // 初期状態：データがあれば一覧、なければフォーム
+    // 初期起動時の制御
     if (records.length > 0) {
       showList();
     } else {
