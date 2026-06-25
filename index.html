@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>部品がわかるよゼネポン君（実務・圧縮機能付き）</title>
+  <title>部品がわかるよひーぽん君（実務・圧縮機能付き）</title>
   <style>
     body {
       margin: 0;
@@ -22,13 +22,29 @@
       flex-direction: column;
     }
 
+    /* ヘッダーのスタイル修正（flexと配置調整の追加） */
     .header {
       background: #1f4e79;
       color: white;
-      padding: 18px 16px;
+      padding: 12px 16px;
       font-size: 20px;
       font-weight: bold;
-      text-align: center;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px; /* テキストと画像の隙間 */
+    }
+
+    /* ヘッダータイトルのスタイル追加 */
+    .header-title {
+      line-height: 1.2;
+    }
+
+    /* ひーぽんくん画像のスタイル追加 */
+    .header-char {
+      height: 40px; /* ヘッダーに綺麗に収まる高さ */
+      width: auto;
+      object-fit: contain;
     }
 
     .content {
@@ -225,7 +241,6 @@
       color: #666;
     }
 
-    /* ローディング表示用のスタイル */
     .loading-text {
       color: #e65100;
       font-weight: bold;
@@ -235,7 +250,10 @@
 </head>
 <body>
   <div class="app">
-    <div class="header">部品がわかるよゼネポン君</div>
+    <div class="header">
+      <div class="header-title">部品がわかるよひーぽん君</div>
+      <img src="hipon.png" alt="ひーぽんくん" class="header-char" />
+    </div>
 
     <div class="content">
       <div id="formScreen">
@@ -275,21 +293,19 @@
   </div>
 
   <script>
-    // マスタデータの定義
+    // マスタデータの定義（※「deviceMode：」となっていた全角コロンを半角コロンに修正しました）
     const masterData = {
       siteName: ['KOKOHOTEL', 'おんぽいの湯', '北津島病院', '阿下喜温泉'],
       deviceName: ['水冷式', '空冷式'],
-      deviceMode：['HU-1', 'WHU-1', 'CH-1', 'ZQ-1'],
+      deviceMode: ['HU-1', 'WHU-1', 'CH-1', 'ZQ-1'],
       partLocation: ['1系統', '2系統', '3系統', '4系統', '5系統', '6系統', '7系統', '8系統', '9系統', '10系統']
     };
 
     const steps = [
       { key: 'siteName', label: '現場名を選択してください', type: 'select', options: masterData.siteName },
-     
       { key: 'deviceName', label: '機器の種類を選択してください', type: 'select', options: masterData.deviceName },
-      { key: 'deviceModel', label: '機器の型番を入力してください', type: 'select', options: masterData.deviceMode },
+      { key: 'deviceModel', label: '機器の型番を選択してください', type: 'select', options: masterData.deviceMode },
       { key: 'partName', label: '部品名を入力してください', type: 'text', placeholder: '例：圧縮機' },
-      
       { key: 'partModel', label: '部品の型番を入力してください', type: 'text', placeholder: '例：ZR190KCE-TWC-551' },
       { key: 'partLocation', label: '部品の使用系統を選択してください', type: 'select', options: masterData.partLocation },
       { key: 'photo', label: '部品の写真を追加してください', type: 'file' },
@@ -298,9 +314,8 @@
 
     let currentStep = 0;
     let formData = {};
-    let editIndex = null; // 編集中のインデックス（nullなら新規登録）
+    let editIndex = null;
     
-    // LocalStorageからデータを読み込み
     let records = JSON.parse(localStorage.getItem('parts_records')) || [];
 
     function renderStep() {
@@ -344,7 +359,6 @@
           <textarea id="stepInput" placeholder="${step.placeholder || ''}">${formData[step.key] || ''}</textarea>
         `;
       } else if (step.type === 'file') {
-        // capture="environment" を削除し、カメラとフォトライブラリ両方から選べるように変更
         inputHTML = `
           <input type="file" id="stepInput" accept="image/*" />
           <div id="compressStatus" class="small hidden loading-text">写真を圧縮中...</div>
@@ -377,13 +391,12 @@
           const file = this.files[0];
           if (file) {
             formData.photoName = file.name;
-            status.classList.remove('hidden'); // 圧縮中メッセージを表示
+            status.classList.remove('hidden');
 
             const reader = new FileReader();
             reader.onload = function(e) {
               const img = new Image();
               img.onload = function() {
-                // 画像自動圧縮ロジック（最大幅800px、画質0.6のJPEGに変換）
                 const canvas = document.createElement('canvas');
                 const MAX_WIDTH = 800;
                 let width = img.width;
@@ -400,13 +413,12 @@
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
 
-                // 画質を少し落として、容量を極限まで軽量化
                 const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.6);
                 
                 formData.photoPreview = compressedDataUrl;
                 preview.src = compressedDataUrl;
                 preview.style.display = 'block';
-                status.classList.add('hidden'); // 圧縮中メッセージを隠す
+                status.classList.add('hidden');
               };
               img.src = e.target.result;
             };
@@ -496,12 +508,11 @@
 
       document.getElementById('summaryCard').innerHTML = `
         <p><strong>現場名：</strong>${formData.siteName || ''}</p>
-        <p><strong>担当者：</strong>${formData.manager || ''}</p>
-        <p><strong>機器名：</strong>${formData.deviceName || ''}</p>
+        <p><strong>機器種類：</strong>${formData.deviceName || ''}</p>
         <p><strong>機器型番：</strong>${formData.deviceModel || ''}</p>
         <p><strong>部品名：</strong>${formData.partName || ''}</p>
         <p><strong>部品型番：</strong>${formData.partModel || ''}</p>
-        <p><strong>使用箇所：</strong>${formData.partLocation || ''}</p>
+        <p><strong>使用系統：</strong>${formData.partLocation || ''}</p>
         <p><strong>補足説明：</strong>${formData.memo || ''}</p>
         ${formData.photoPreview ? `<img src="${formData.photoPreview}" class="photo-preview" style="display:block;" />` : ''}
       `;
@@ -524,7 +535,6 @@
     function submitForm() {
       const dataToSave = {
         siteName: formData.siteName || '',
-        manager: formData.manager || '',
         deviceName: formData.deviceName || '',
         deviceModel: formData.deviceModel || '',
         partName: formData.partName || '',
@@ -546,7 +556,6 @@
           successTitleElem.textContent = "登録が完了しました";
         }
 
-        // LocalStorageにデータを保存
         localStorage.setItem('parts_records', JSON.stringify(records));
 
         document.getElementById('confirmScreen').classList.add('hidden');
@@ -561,7 +570,7 @@
     }
 
     function showList() {
-      editIndex = null; // 状態クリア
+      editIndex = null;
       document.getElementById('formScreen').classList.add('hidden');
       document.getElementById('confirmScreen').classList.add('hidden');
       document.getElementById('successScreen').classList.add('hidden');
@@ -588,12 +597,11 @@
             </div>
           </div>
           <p><strong>現場名：</strong>${r.siteName}</p>
-          <p><strong>担当者：</strong>${r.manager}</p>
-          <p><strong>機器名：</strong>${r.deviceName}</p>
+          <p><strong>機器種類：</strong>${r.deviceName}</p>
           <p><strong>機器型番：</strong>${r.deviceModel}</p>
           <p><strong>部品名：</strong>${r.partName}</p>
           <p><strong>部品型番：</strong>${r.partModel}</p>
-          <p><strong>使用箇所：</strong>${r.partLocation}</p>
+          <p><strong>使用系統：</strong>${r.partLocation}</p>
           <p><strong>補足説明：</strong>${r.memo}</p>
           ${r.photoPreview ? `<img src="${r.photoPreview}" class="photo-preview" style="display:block;" />` : ''}
         `;
@@ -601,10 +609,8 @@
       });
     }
 
-    // 過去データの編集を開始する関数
     function startEdit(index) {
       editIndex = index;
-      // 過去データをformDataにコピーして復元
       formData = JSON.parse(JSON.stringify(records[index]));
       currentStep = 0;
 
@@ -645,10 +651,9 @@
         return;
       }
 
-      const headers = ['現場名', '担当者', '機器名', '機器型番', '部品名', '部品型番', '使用箇所', '補足説明', '写真ファイル名'];
+      const headers = ['現場名', '機器種類', '機器型番', '部品名', '部品型番', '使用系統', '補足説明', '写真ファイル名'];
       const rows = records.map(r => [
         r.siteName,
-        r.manager,
         r.deviceName,
         r.deviceModel,
         r.partName,
@@ -674,7 +679,6 @@
       document.body.removeChild(link);
     }
 
-    // 初期起動時の制御
     if (records.length > 0) {
       showList();
     } else {
