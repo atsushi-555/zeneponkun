@@ -341,7 +341,7 @@
     function renderStep() {
       const step = steps[currentStep];
       const container = document.getElementById('stepContainer');
-      const progressText = document.getElementById('progreｍssText');
+      const progressText = document.getElementById('progressText'); // ← 半角に修正しました
       const progressFill = document.getElementById('progressFill');
       const editModeBadge = document.getElementById('editModeBadge');
 
@@ -674,12 +674,11 @@
       renderStep();
     }
 
-    /* 削除ボタン押下時の処理にパスワード制限を追加 */
     function deleteRecord(index) {
       const password = prompt(`登録No.${index + 1} のデータを削除します。\nパスワードを入力してください:`);
       
       if (password === null) {
-        return; // キャンセルされた場合は何もしない
+        return;
       }
 
       if (password === 'zeneral5963') {
