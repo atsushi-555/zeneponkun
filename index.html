@@ -284,14 +284,14 @@
 
     const steps = [
       { key: 'siteName', label: '現場名を選択してください', type: 'select', options: masterData.siteName },
-      { key: 'manager', label: '担当者名を入力してください', type: 'text', placeholder: '例：山田 太郎' },
-      { key: 'deviceName', label: '機器名を選択してください', type: 'select', options: masterData.deviceName },
-      { key: 'deviceModel', label: '機器の型番を入力してください', type: 'text', placeholder: '例：CP-4500X' },
-      { key: 'partName', label: '部品名を入力してください', type: 'text', placeholder: '例：電源ユニット' },
-      { key: 'partModel', label: '部品の型番を入力してください', type: 'text', placeholder: '例：PSU-24V-10A' },
-      { key: 'partLocation', label: '部品の使用箇所を選択してください', type: 'select', options: masterData.partLocation },
+     
+      { key: 'deviceName', label: '機器の種類を選択してください', type: 'select', options: masterData.deviceName },
+      { key: 'deviceModel', label: '機器の型番を入力してください', type: 'text', placeholder: '例：HU-1' },
+      { key: 'partName', label: '部品名を入力してください', type: 'text', placeholder: '例：圧縮機' },
+      { key: 'partModel', label: '部品の型番を入力してください', type: 'text', placeholder: '例：ZR190KCE-TWC-551' },
+     
       { key: 'photo', label: '部品の写真を追加してください', type: 'file' },
-      { key: 'memo', label: '補足説明があれば入力してください', type: 'textarea', placeholder: '例：交換時は配線色を確認' }
+      { key: 'memo', label: '補足説明があれば入力してください', type: 'textarea', placeholder: '例：2026.1.1交換' }
     ];
 
     let currentStep = 0;
