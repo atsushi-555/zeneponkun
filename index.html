@@ -29,19 +29,22 @@
       font-size: 20px;
       font-weight: bold;
       display: flex;
-      justify-content: center;
+      justify-content: flex-start; /* 左寄せに変更して、アイコンから綺麗に並ぶように調整 */
       align-items: center;
-      gap: 10px;
+      gap: 12px; /* アイコンと文字の間の余白 */
     }
 
     .header-title {
       line-height: 1.2;
     }
 
+    /* キャラクター画像を正方形にして、丸型にくり抜くスタイルに修正 */
     .header-char {
       height: 40px;
-      width: auto;
-      object-fit: contain;
+      width: 40px;        /* 横幅も合わせて正方形に */
+      object-fit: cover;  /* 丸の中に画像を綺麗に収める */
+      border-radius: 50%; /* 完全な丸型に切り抜き */
+      flex-shrink: 0;     /* 画面幅が狭まっても画像が潰れないように保護 */
     }
 
     .content {
@@ -264,8 +267,8 @@
 <body>
   <div class="app">
     <div class="header">
-      <div class="header-title">部品がわかるよひーぽん君</div>
       <img src="./hipon.png" alt="ひーぽんくん" class="header-char" />
+      <div class="header-title">部品がわかるよひーぽん君</div>
     </div>
 
     <div class="content">
@@ -587,7 +590,6 @@
       }
     }
 
-    // 登録一覧の描画および検索処理を行うメイン処理
     function showList() {
       editIndex = null;
       document.getElementById('formScreen').classList.add('hidden');
@@ -596,13 +598,11 @@
       document.getElementById('listScreen').classList.remove('hidden');
       document.getElementById('footerButtons').classList.add('hidden');
 
-      // 画面表示時に前回の検索ワードをクリア
       document.getElementById('searchInput').value = '';
 
       renderRecords(records);
     }
 
-    // レコードリストを実際にHTMLとして出力する処理
     function renderRecords(targetRecords) {
       const recordList = document.getElementById('recordList');
       recordList.innerHTML = '';
@@ -618,7 +618,6 @@
       }
 
       targetRecords.forEach((r) => {
-        // 元のrecords配列における本物のインデックスを探す（編集・削除のため）
         const originalIndex = records.findIndex(orig => orig === r);
 
         const card = document.createElement('div');
@@ -644,16 +643,14 @@
       });
     }
 
-    // 【追加】入力されたワードで先頭文字一致（前方一致）検索をかける関数
     function filterList() {
       const query = document.getElementById('searchInput').value.trim().toLowerCase();
       
       if (query === '') {
-        renderRecords(records); // 空白なら全件表示
+        renderRecords(records);
         return;
       }
 
-      // 「現場名」「部品名」「部品型番」のいずれかが、入力された文字から始まっているデータ（前方一致）を抽出
       const filtered = records.filter(r => {
         const matchSite = r.siteName.toLowerCase().startsWith(query);
         const matchPart = r.partName.toLowerCase().startsWith(query);
