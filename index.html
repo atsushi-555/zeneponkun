@@ -278,7 +278,8 @@
     // マスタデータの定義
     const masterData = {
       siteName: ['KOKOHOTEL', 'おんぽいの湯', '北津島病院', '阿下喜温泉'],
-      deviceName: ['HU-1', 'WHU-1', 'CH-1', 'ZQ-1'],
+      deviceName: ['水冷式', '空冷式'],
+      deviceMode：['HU-1', 'WHU-1', 'CH-1', 'ZQ-1'],
       partLocation: ['1系統', '2系統', '3系統', '4系統', '5系統', '6系統', '7系統', '8系統', '9系統', '10系統']
     };
 
@@ -286,7 +287,7 @@
       { key: 'siteName', label: '現場名を選択してください', type: 'select', options: masterData.siteName },
      
       { key: 'deviceName', label: '機器の種類を選択してください', type: 'select', options: masterData.deviceName },
-      { key: 'deviceModel', label: '機器の型番を入力してください', type: 'text', placeholder: '例：HU-1' },
+      { key: 'deviceModel', label: '機器の型番を入力してください', type: 'select', options: masterData.deviceMode },
       { key: 'partName', label: '部品名を入力してください', type: 'text', placeholder: '例：圧縮機' },
       
       { key: 'partModel', label: '部品の型番を入力してください', type: 'text', placeholder: '例：ZR190KCE-TWC-551' },
