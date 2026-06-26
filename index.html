@@ -29,7 +29,12 @@
       font-size: 20px;
       font-weight: bold;
       display: flex;
-      justify-content: flex-start;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header-left {
+      display: flex;
       align-items: center;
       gap: 12px;
     }
@@ -44,6 +49,22 @@
       object-fit: cover;
       border-radius: 50%;
       flex-shrink: 0;
+    }
+
+    .btn-header-back {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      font-size: 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: normal;
+      flex: none;
+      width: auto;
+    }
+    .btn-header-back:hover {
+      background: rgba(255, 255, 255, 0.3);
     }
 
     .content {
@@ -265,8 +286,11 @@
 <body>
   <div class="app">
     <div class="header">
-      <img src="./hipon.png" alt="ひーぽんくん" class="header-char" />
-      <div class="header-title">部品がわかるよ?ひーぽん君!</div>
+      <div class="header-left">
+        <img src="./hipon.png" alt="ひーぽんくん" class="header-char" />
+        <div class="header-title">部品がわかるよ?ひーぽん君!</div>
+      </div>
+      <button id="headerBackBtn" class="btn-header-back hidden" onclick="showList()">一覧へ戻る</button>
     </div>
 
     <div class="content">
@@ -313,30 +337,37 @@
   </div>
 
   <script>
-    // 部品名ごとに選択させたい型番を定義します
-    const masterData = {
+    // 初期マスターデータ
+    const defaultMasterData = {
       siteName: ['KOKOHOTEL', 'おんぽいの湯', '北津島病院', '阿下喜温泉'],
       deviceName: ['水冷式', '空冷式'],
-      deviceMode: ['HU-1', 'WHU-1', 'CH-1', 'ZQ-1'],
+      deviceModel: ['HU-1', 'WHU-1', 'CH-1', 'ZQ-1'], // deviceMode から deviceModel に修正
       partName: ['コンプレッサー', 'アキュームレーター', 'オイルセパレーター', '四方弁', '三方弁', '二方弁', '水熱交換器', '空気熱交換器', '膨張弁', 'キャピラリーチューブ', '排気ファン'],
       partModel: {
-        'コンプレッサー': ['ZR190KCE-TWC-551', 'ZR160KCE-TWC-551', 'ZR108KCE-TF5-551', 'ZR108KCE-TF5-551', 'ZR190KCE-TWD-551 (400V)'],
+        'コンプレッサー': ['ZR190KCE-TWC-551', 'ZR160KCE-TWC-551', 'ZR108KCE-TF5-551', 'ZR190KCE-TWD-551 (400V)'],
         'アキュームレーター': ['5L', '8L'],
         'オイルセパレーター': ['2L', 'A-WZ559011 410A対応'],
-        '四方弁': ['STF-2011G　(本体)+GOA9548A1(ｺｲﾙ)', 'SFT-0712G　(本体)+GOA9548A1(ｺｲﾙ)'],
+        '四方弁': ['STF-2011G (本体)+GOA9548A1(ｺｲﾙ)', 'SFT-0712G (本体)+GOA9548A1(ｺｲﾙ)'],
         '膨張弁': ['ATX-71110DPSQ670', 'ATX-71140DPSQ671'],
-        // 必要に応じて他の部品名の型番リストもここに追加できます
       },
       partLocation: ['1系統', '2系統', '3系統', '4系統', '5系統', '6系統', '7系統', '8系統', '9系統', '10系統']
     };
 
+    // ローカルストレージから拡張マスターデータを読み込む、無ければ初期データを使用
+    let masterData = JSON.parse(localStorage.getItem('custom_master_data')) || defaultMasterData;
+
+    // もし古いデータ構造が残っていた場合のためのクリーンアップ
+    if(!masterData.deviceModel && masterData.deviceMode) {
+      masterData.deviceModel = masterData.deviceMode;
+    }
+
     const steps = [
-      { key: 'siteName', label: '現場名を選択してください', type: 'select', options: masterData.siteName },
-      { key: 'deviceName', label: '機器の種類を選択してください', type: 'select', options: masterData.deviceName },
-      { key: 'deviceModel', label: '機器の型番を選択してください', type: 'select', options: masterData.deviceMode },
-      { key: 'partName', label: '部品名を選択してください', type: 'select', options: masterData.partName },
-      { key: 'partModel', label: '部品の型番を選択してください', type: 'select', options: [] }, // optionsは後から動的にセットします
-      { key: 'partLocation', label: '部品の使用系統を選択してください', type: 'select', options: masterData.partLocation },
+      { key: 'siteName', label: '現場名を選択してください', type: 'select', get options() { return masterData.siteName; } },
+      { key: 'deviceName', label: '機器の種類を選択してください', type: 'select', get options() { return masterData.deviceName; } },
+      { key: 'deviceModel', label: '機器の型番を選択してください', type: 'select', get options() { return masterData.deviceModel; } },
+      { key: 'partName', label: '部品名を選択してください', type: 'select', get options() { return masterData.partName; } },
+      { key: 'partModel', label: '部品の型番を選択してください', type: 'select', options: [] }, // optionsは動的に上書き
+      { key: 'partLocation', label: '部品の使用系統を選択してください', type: 'select', get options() { return masterData.partLocation; } },
       { key: 'photo', label: '部品の写真を追加してください', type: 'file' },
       { key: 'memo', label: '補足説明があれば入力してください', type: 'textarea', placeholder: '例：2026.1.1交換' }
     ];
@@ -353,6 +384,7 @@
       const progressText = document.getElementById('progressText');
       const progressFill = document.getElementById('progressFill');
       const editModeBadge = document.getElementById('editModeBadge');
+      const headerBackBtn = document.getElementById('headerBackBtn');
 
       if (editIndex !== null) {
         editModeBadge.textContent = `登録No.${editIndex + 1} のデータを修正中`;
@@ -361,10 +393,17 @@
         editModeBadge.classList.add('hidden');
       }
 
+      // 登録データが存在すれば、入力途中でも一覧に戻れるボタンを表示
+      if (records.length > 0) {
+        headerBackBtn.classList.remove('hidden');
+      } else {
+        headerBackBtn.classList.add('hidden');
+      }
+
       progressText.textContent = `${currentStep + 1} / ${steps.length}`;
       progressFill.style.width = `${((currentStep + 1) / steps.length) * 100}%`;
 
-      // partModel のステップの時だけ、直前で選んだ partName に応じた選択肢をセットする
+      // partModelステップの時、直前のpartNameに対応した選択肢をセット
       if (step.key === 'partModel') {
         const selectedPartName = formData['partName'];
         step.options = masterData.partModel[selectedPartName] || [];
@@ -537,6 +576,7 @@
       document.getElementById('confirmScreen').classList.remove('hidden');
       document.getElementById('successScreen').classList.add('hidden');
       document.getElementById('listScreen').classList.add('hidden');
+      document.getElementById('headerBackBtn').classList.add('hidden');
 
       const titleElem = document.getElementById('confirmTitle');
       titleElem.textContent = editIndex !== null ? `修正内容の確認 (No.${editIndex + 1})` : "入力内容の確認";
@@ -567,6 +607,37 @@
       renderStep();
     }
 
+    // 直接入力された新規ワードをマスターデータに学習させる関数
+    function updateMasterOptions() {
+      let updated = false;
+
+      // 配列型のマスターの更新処理
+      ['siteName', 'deviceName', 'deviceModel', 'partName', 'partLocation'].forEach(key => {
+        const val = formData[key];
+        if (val && !masterData[key].includes(val)) {
+          masterData[key].push(val);
+          updated = true;
+        }
+      });
+
+      // 部品型番（連動型オブジェクト）の更新処理
+      const pName = formData['partName'];
+      const pModel = formData['partModel'];
+      if (pName && pModel) {
+        if (!masterData.partModel[pName]) {
+          masterData.partModel[pName] = [];
+        }
+        if (!masterData.partModel[pName].includes(pModel)) {
+          masterData.partModel[pName].push(pModel);
+          updated = true;
+        }
+      }
+
+      if (updated) {
+        localStorage.setItem('custom_master_data', JSON.stringify(masterData));
+      }
+    }
+
     function submitForm() {
       const dataToSave = {
         siteName: formData.siteName || '',
@@ -591,10 +662,14 @@
           successTitleElem.textContent = "登録が完了しました";
         }
 
+        // 新しい入力値を次回の選択肢リストに反映
+        updateMasterOptions();
+
         localStorage.setItem('parts_records', JSON.stringify(records));
 
         document.getElementById('confirmScreen').classList.add('hidden');
         document.getElementById('successScreen').classList.remove('hidden');
+        document.getElementById('headerBackBtn').classList.add('hidden');
         document.getElementById('footerButtons').innerHTML = `
           <button class="btn-next" onclick="showList()">登録一覧を見る</button>
         `;
@@ -611,6 +686,7 @@
       document.getElementById('successScreen').classList.add('hidden');
       document.getElementById('listScreen').classList.remove('hidden');
       document.getElementById('footerButtons').classList.add('hidden');
+      document.getElementById('headerBackBtn').classList.add('hidden');
 
       document.getElementById('searchInput').value = '';
 
@@ -668,7 +744,7 @@
       const filtered = records.filter(r => {
         const matchSite = r.siteName.toLowerCase().startsWith(query);
         const matchPart = r.partName.toLowerCase().startsWith(query);
-        const matchModel = r.partModel.toLowerCase().startsWith(query);
+        const matchModel = r.partModel ? r.partModel.toLowerCase().startsWith(query) : false;
         return matchSite || matchPart || matchModel;
       });
 
@@ -755,6 +831,7 @@
       document.body.removeChild(link);
     }
 
+    // 起動時処理
     if (records.length > 0) {
       showList();
     } else {
